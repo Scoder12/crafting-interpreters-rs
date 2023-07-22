@@ -46,7 +46,8 @@ pub enum TokenKind {
     Var,
     While,
 
-    Comment,
+    LineComment,
+    BlockComment,
     Whitespace,
     Newline,
 
@@ -69,11 +70,30 @@ pub fn lex(input: &str) -> Vec<Token> {
         res.push(next);
     }
     debug_assert!(
-        res.iter().map(|t| t.text.len()).sum::<usize>() == input.len(),
-        "did not parse everything"
+        res.iter().map(|t| t.text.clone()).collect::<String>() == input,
+        "expected lex result to cleanly match input"
     );
     res
 }
+
+static KEYWORDS: phf::Map<&'static str, TokenKind> = phf::phf_map! {
+    "and" => TokenKind::And,
+    "class" => TokenKind::Class,
+    "else" => TokenKind::Else,
+    "false" => TokenKind::False,
+    "for" => TokenKind::For,
+    "fn" => TokenKind::Fn,
+    "if" => TokenKind::If,
+    "nil" => TokenKind::Nil,
+    "or" => TokenKind::Or,
+    "print" => TokenKind::Print,
+    "return" => TokenKind::Return,
+    "super" => TokenKind::Super,
+    "this" => TokenKind::This,
+    "true" => TokenKind::True,
+    "var" => TokenKind::Var,
+    "while" => TokenKind::While,
+};
 
 fn valid_token(input: &str) -> Option<Token> {
     if input.is_empty() {
@@ -81,7 +101,7 @@ fn valid_token(input: &str) -> Option<Token> {
     }
 
     let mut chars = input.chars().peekable();
-    let first_char = chars.nth(0).unwrap();
+    let first_char = chars.next().unwrap();
     macro_rules! t1 {
         ($kind: expr) => {
             return Some(Token {
@@ -141,7 +161,21 @@ fn valid_token(input: &str) -> Option<Token> {
                     .chain(chars.take_while(|c| *c != '\n'))
                     .collect();
                 return Some(Token {
-                    kind: TokenKind::Comment,
+                    kind: TokenKind::LineComment,
+                    text,
+                });
+            }
+            if let Some('*') = chars.peek() {
+                let iter1 = std::iter::once((first_char, *chars.peek().unwrap()))
+                    .chain(chars.zip(input.chars().skip(2)))
+                    .take_while(|(c, n)| *c != '*' || *n != '/')
+                    .map(|(_c, n)| n);
+                let text = std::iter::once(first_char)
+                    .chain(iter1)
+                    .chain(std::iter::once('/'))
+                    .collect();
+                return Some(Token {
+                    kind: BlockComment,
                     text,
                 });
             }
@@ -194,7 +228,7 @@ fn valid_token(input: &str) -> Option<Token> {
                 && chars.peek().map(|c| c.is_numeric()).unwrap_or(false)
             {
                 text.push('.');
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if !c.is_numeric() && c != '_' {
                         break;
                     }
@@ -204,6 +238,21 @@ fn valid_token(input: &str) -> Option<Token> {
             return Some(Token {
                 kind: TokenKind::Number,
                 text,
+            });
+        }
+        c @ '_' | c if c.is_alphabetic() => {
+            let ident: String = std::iter::once(c)
+                .chain(chars.take_while(|c| c.is_alphabetic() || c.is_numeric() || *c == '_'))
+                .collect();
+            if let Some(kind) = KEYWORDS.get(&ident) {
+                return Some(Token {
+                    kind: *kind,
+                    text: ident,
+                });
+            }
+            return Some(Token {
+                kind: Identifier,
+                text: ident,
             });
         }
         _ => {}
