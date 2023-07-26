@@ -29,5 +29,9 @@ fn run_prompt() {
 }
 
 fn run(line: String) {
-    println!("{:#?}", parser::lexer::lex(&line));
+    let tokens = parser::lexer::lex(&line);
+    println!("{:#?}", tokens);
+    let parse = parser::parser::parse(tokens);
+    println!("{:#?}", parse.syntax());
+    println!("errors: {:?}", parse.errors);
 }

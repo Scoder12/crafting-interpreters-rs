@@ -13,6 +13,12 @@ macro_rules! build_impls {
             $v = 0, // fix variant will be zero
             $($values),*,
 
+            // AST Nodes
+            Equality,
+            Comparison,
+            Term,
+            Factor,
+            Unary,
             Root // root must be last; it is used for bounds checking
         }
 
@@ -79,6 +85,7 @@ build_impls! {
     Whitespace,
     Newline,
 
-    ErrorUnexpected,
-    ErrorUnterminatedString
+    ErrorInvalidToken,
+    ErrorUnterminatedString,
+    ErrorUnexpected
 }

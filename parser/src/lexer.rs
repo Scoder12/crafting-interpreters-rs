@@ -2,8 +2,8 @@ use crate::types::TokenKind;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Token {
-    kind: TokenKind,
-    text: String,
+    pub kind: TokenKind,
+    pub text: String,
 }
 
 pub fn lex(input: &str) -> Vec<Token> {
